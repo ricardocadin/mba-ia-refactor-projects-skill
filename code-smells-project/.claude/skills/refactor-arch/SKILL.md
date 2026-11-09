@@ -51,7 +51,7 @@ Em seguida, siga direto para a Fase 2 (não há pausa aqui).
 1. Leia `references/anti-patterns-catalog.md` e `references/report-template.md`.
 2. Cruze o código do projeto com os sinais de detecção do catálogo, usando o resultado da Fase 1 para saber onde olhar.
 3. Verifique sempre APIs deprecated (AP-12). Se a versão do framework não estiver declarada, o item vai para `Not Verified`, não vira finding.
-4. Para cada finding, registre o arquivo e a linha exatos e a evidência. Um problema sem `arquivo:linha` não entra no relatório. Se a correção do finding mudar o que a aplicação aceita ou devolve (nova validação, rota protegida, campo removido, default de execução), marque a recomendação como `Requer decisão humana`, explicando o que precisa ser decidido.
+4. Para cada finding, registre o arquivo e a linha exatos e a evidência. Um problema sem `arquivo:linha` não entra no relatório. **Antes de gravar, confirme cada `arquivo:linha` com um comando** (`sed -n '<linha>p' <arquivo>` ou `grep -n`), nunca de memória: um número deslocado em uma linha invalida a evidência. Se a correção do finding mudar o que a aplicação aceita ou devolve (nova validação, rota protegida, campo removido, default de execução), marque a recomendação como `Requer decisão humana`, explicando o que precisa ser decidido.
 5. Monte o relatório seguindo o `report-template.md` (parte da Fase 2) e confira o checklist de validação do template antes de entregar.
 6. Grave o relatório em `reports/audit-project-N.md`, dentro da pasta `reports/` na **raiz do repositório git** (obtenha com `git rev-parse --show-toplevel`; não é a pasta do projeto analisado). Se não houver repositório git, pergunte ao usuário onde gravar. Escolha `N` assim: (a) se já existir um `audit-project-*.md` cuja linha `Project:` seja igual ao nome do projeto analisado, reaproveite o número dele e substitua o arquivo (é uma nova execução do mesmo projeto); (b) senão, use o maior número existente + 1, ou `1` se a pasta não tiver nenhum `audit-project-*.md`. Crie `reports/` se necessário. Exceção: se o relatório existente do mesmo projeto já contém o bloco `PHASE 3: REFACTORING COMPLETE`, não o substitua: pergunte ao usuário o que fazer. Gravar o relatório antes da pergunta de confirmação é permitido (é a única escrita das Fases 1 e 2).
 7. Aplique o **checklist da Fase 2** (seção "Checklist de validação"), corrigindo o relatório se algum item falhar, e mostre ao usuário o relatório, o caminho do arquivo e o checklist preenchido. O último item (pausa e confirmação) é marcado só depois do passo 8.
@@ -95,8 +95,8 @@ Execute os Passos 0 e 1 do `validation-guide.md`: prepare o ambiente, suba a apl
 
 1. Execute os Passos 3 e 4 do guia: boot limpo, comparação completa com o baseline (`scripts/compare.py`), reexecução da detecção do catálogo e das PoCs gravadas no baseline.
 2. Aplique o **checklist da Fase 3** (seção "Checklist de validação"). Item que falha volta para o ciclo do 3.2 e é corrigido; não encerre com item pendente sem declará-lo e explicar o motivo ao usuário.
-3. Gere o **bloco da Fase 3** conforme a seção "Bloco da Fase 3" do `report-template.md` e acrescente-o ao final do mesmo arquivo `reports/audit-project-N.md` gravado na Fase 2, sem reescrever a parte da Fase 2, seguido do **checklist da Fase 3 preenchido** (com a evidência de cada item). A estrutura em `New Project Structure` vem do sistema de arquivos real.
-4. Remova os artefatos temporários só depois de gravar o bloco; confirme que não restou processo escutando a porta.
+3. Gere o **bloco da Fase 3** conforme a seção "Bloco da Fase 3" do `report-template.md` e acrescente-o ao final do mesmo arquivo `reports/audit-project-N.md` gravado na Fase 2, sem reescrever a parte da Fase 2, seguido do **checklist da Fase 3 preenchido** (com a evidência de cada item). A estrutura em `New Project Structure` vem do sistema de arquivos real. Escreva o bloco e o checklist **no mesmo idioma do relatório da Fase 2** (os rótulos fixos do template, como `Validation`, permanecem) e use o título `## Checklist de Validação (Fase 3)`.
+4. Limpe o projeto e os artefatos: remova os temporários só depois de gravar o bloco, apague do projeto os `__pycache__`, `*.pyc`, bancos locais e logs criados pelas execuções, e garanta um `.gitignore` que cubra esses arquivos (crie-o, ou acrescente as entradas que faltarem, se a stack não o tiver). Confirme que não restou processo escutando a porta.
 5. Rode `git status` e informe ao usuário o que foi criado e alterado. **Não faça commit nem push**: isso é decisão do usuário.
 
 ---
@@ -129,7 +129,7 @@ Como preencher:
 
 ### Fase 2 — Auditoria
 - [ ] Relatório segue o template definido nos arquivos de referência — *Como verificar:* passe o checklist de validação do próprio `report-template.md` item a item.
-- [ ] Cada finding tem arquivo e linhas exatos — *Como verificar:* releia cada `arquivo:linha` citado e confirme que a evidência está de fato ali.
+- [ ] Cada finding tem arquivo e linhas exatos — *Como verificar:* para cada `arquivo:linha` citado, rode `sed -n '<linha>p' <arquivo>` (ou `grep -n`) e confirme que o trecho da evidência é exatamente aquela linha. Releitura de memória não vale.
 - [ ] Findings ordenados por severidade (CRITICAL → LOW) — *Como verificar:* a tabela e a seção Findings seguem a mesma ordem, e a contagem do Summary bate com o total.
 - [ ] Mínimo de 5 findings identificados — *Como verificar:* conte os findings. Com menos de 5, o item fica pendente e o relatório diz isso, sem inflar a lista.
 - [ ] Detecção de APIs deprecated incluída (se aplicável) — *Como verificar:* o AP-12 foi avaliado; há findings de deprecated, ou itens em `Not Verified`, ou a constatação de que não há nenhuma (`n/a` justificado).
@@ -138,7 +138,7 @@ Como preencher:
 ### Fase 3 — Refatoração
 - [ ] Estrutura de diretórios segue padrão MVC — *Como verificar:* a árvore real tem as camadas de `mvc-architecture.md` (config, models, views/routes, controllers, middlewares) e os arquivos estão nelas.
 - [ ] Configuração extraída para módulo de config (sem hardcoded) — *Como verificar:* as buscas do AP-02 e AP-13 do catálogo não encontram segredos, portas ou caminhos fora do módulo de config.
-- [ ] Models criados para abstrair dados — *Como verificar:* o acesso a dados (SQL/ORM) está só nos models; as buscas do AP-01, AP-05 e AP-07 não encontram acesso a dados em controllers ou rotas.
+- [ ] Models criados para abstrair dados — *Como verificar:* o acesso a dados (SQL/ORM) está só na pasta `models/` (a camada de dados leva esse nome, ver `mvc-architecture.md`, seção 6); as buscas do AP-01, AP-05 e AP-07 não encontram acesso a dados em controllers ou rotas.
 - [ ] Views/Routes separadas para visualização ou roteamento — *Como verificar:* o registro de rotas está em módulo próprio, separado da lógica dos controllers.
 - [ ] Controllers concentram o fluxo da aplicação — *Como verificar:* os controllers recebem a requisição, validam a entrada, chamam os models e devolvem a resposta, sem SQL nem regra de negócio pesada.
 - [ ] Error handling centralizado — *Como verificar:* existe um único tratador global registrado e os controllers não têm `catch` genérico devolvendo detalhe interno (busca do AP-10 vazia).

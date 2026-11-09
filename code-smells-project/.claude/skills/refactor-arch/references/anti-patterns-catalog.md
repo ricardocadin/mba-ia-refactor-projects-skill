@@ -71,6 +71,8 @@ Distribuição: 4 CRITICAL, 4 HIGH, 4 MEDIUM, 2 LOW (14 anti-patterns).
 - PHP: `define('DB_PASS', '...')` em arquivo versionado
 - Qualquer: endpoint de saúde/diagnóstico que devolve `secret_key`, `db_path`, `debug`; credenciais de serviço ou de banco no código; `debug=True` com `host=0.0.0.0`
 
+**Granularidade:** reporte como achados separados (a) segredos e credenciais hardcoded ou expostos em respostas e (b) modo debug ou bind de rede inseguro (`debug=True`, `host=0.0.0.0`). Cada achado cita seus próprios arquivos e linhas.
+
 **Como confirmar:** o literal é um segredo real ou de uso produtivo, e não um valor de teste claramente isolado? Procure o mesmo valor em respostas HTTP (`/health`, `/config`) e no controle de versão. Se o valor está no repositório ou sai em alguma resposta, está exposto.
 
 **Impacto:** comprometimento de sessões, tokens e contas; acesso ao debugger remoto quando o modo debug está ativo.
@@ -227,6 +229,8 @@ Distribuição: 4 CRITICAL, 4 HIGH, 4 MEDIUM, 2 LOW (14 anti-patterns).
 
 **Como confirmar:** envie corpo vazio, tipos errados (string no lugar de número) e IDs inexistentes. Respostas 500 com texto de exceção, ou sucesso silencioso, confirmam o problema.
 
+**Granularidade:** reporte como achados separados (a) o tratamento genérico de erros (`except Exception` devolvendo a mensagem interna) e (b) a validação de entrada ausente ou inconsistente. Cada achado cita seus próprios arquivos e linhas.
+
 **Impacto:** respostas 500 evitáveis, vazamento de detalhes internos e dados inconsistentes.
 **Transformação:** → PB-10
 
@@ -310,7 +314,7 @@ Distribuição: 4 CRITICAL, 4 HIGH, 4 MEDIUM, 2 LOW (14 anti-patterns).
 - PHP: `echo`/`var_dump` em fluxo de produção
 - Qualquer: log sem nível, timestamp ou contexto; mensagem de "envio" de e-mail/SMS que só imprime; colunas ou campos criados e nunca usados
 
-**Como confirmar:** procure por `print`/`console.log` fora de scripts utilitários; rode o linter da stack (ex.: pyflakes/ruff, ESLint com `no-unused-vars`, `javac -Xlint`, PHP_CodeSniffer), quando disponível. Sem linter, busque o nome de cada import no próprio arquivo: sem uso além da linha do import, é código morto. Cite o arquivo e a linha do import. Verifique também se cada configuração ou coluna declarada é lida em algum ponto.
+**Como confirmar:** procure por `print`/`console.log` fora de scripts utilitários; rode o linter da stack (ex.: pyflakes/ruff, ESLint com `no-unused-vars`, `javac -Xlint`, PHP_CodeSniffer), quando disponível. Sem linter, busque o nome de cada import no próprio arquivo: sem uso além da linha do import, é código morto. Cite o arquivo e a linha do import. Verifique também se cada configuração ou coluna declarada é lida em algum ponto: para cada chave definida (por exemplo `app.config[...]`, `app.config.update(...)`, variável de ambiente lida), busque o ponto de leitura (`current_app.config`, `app.config[...]` em leitura, `config.<NOME>`). Chave que só é escrita é código morto, inclusive depois de uma refatoração que passou a injetar o valor por outro caminho.
 
 **Impacto:** diagnóstico fraco em produção e ruído que confunde a leitura.
 **Transformação:** → PB-14

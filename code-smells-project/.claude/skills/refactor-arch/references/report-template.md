@@ -87,7 +87,7 @@ Gerado ao final da Fase 3, depois da validação do `validation-guide.md`, e acr
 ```
 
 ### Checklist de validação preenchido
-Logo após o bloco, grave o **checklist da Fase 3** do `SKILL.md` já preenchido: uma linha por item, `[x]` com a evidência (comando, contagem ou `arquivo:linha`) ou `[ ]` com o motivo. Ele existe para o usuário conferir o resultado sem refazer a validação.
+O bloco e o checklist são escritos **no mesmo idioma do relatório da Fase 2**; os rótulos fixos do template (`Validation`, `Intentional changes`, `Not verified`, `Endpoint comparison`) permanecem. Logo após o bloco, sem separadores nem títulos extras, grave o **checklist da Fase 3** do `SKILL.md` já preenchido, sob o título `## Checklist de Validação (Fase 3)`: uma linha por item, `[x]` com a evidência (comando, contagem ou `arquivo:linha`) ou `[ ]` com o motivo. Ele existe para o usuário conferir o resultado sem refazer a validação.
 
 ### Regras de preenchimento do bloco da Fase 3
 - `New Project Structure`: gerada a partir do sistema de arquivos depois da refatoração, nunca de memória. Mostre só os diretórios e arquivos que existem, com a função de cada camada quando não for óbvia (por exemplo, `app.py (composition root)`).
@@ -124,7 +124,7 @@ Logo após o bloco, grave o **checklist da Fase 3** do `SKILL.md` já preenchido
 - `File`: traz a primeira ocorrência e, entre parênteses, as demais (`(+ outras ocorrências)`), todas no formato `caminho:linha`. Não crie listas separadas de ocorrências dentro do finding; as ocorrências ficam somente no campo `File`.
 - `Recommendation`: aponta para o playbook de refatoração com `(→ PB-XX)`. O número do `PB-XX` é o mesmo do `AP-XX` do catálogo. Quando a correção depender de decisão externa (humana), a recomendação deve deixar isso claro, por exemplo: `Requer decisão humana: <o que precisa ser decidido>`. Isso vale sempre que a correção mudar o que a aplicação aceita ou devolve (nova validação que rejeita entrada hoje aceita, rota que passa a exigir autenticação, campo removido, default de execução diferente).
 - Findings de APIs deprecated seguem o mesmo formato, com o ID `AP-12`.
-- Um mesmo anti-pattern pode gerar mais de um finding. Não se limita a um finding por AP: problemas distintos do mesmo AP (conforme a granularidade definida no catálogo, como as duas partes do AP-03) são reportados separadamente. Cada um tem título próprio, nome descritivo distinto e o mesmo `AP-XX`.
+- Um mesmo anti-pattern pode gerar mais de um finding. Não se limita a um finding por AP: problemas distintos do mesmo AP (conforme a granularidade definida no catálogo: as duas partes do AP-03, do AP-02 e do AP-10) são reportados separadamente, para a contagem não variar entre execuções. Cada um tem título próprio, nome descritivo distinto e o mesmo `AP-XX`.
 
 ### Not Verified
 - Liste tudo o que a auditoria **não conseguiu verificar**, sempre com o motivo. Exemplos: API possivelmente deprecated cuja versão não está declarada; sinal que exige linter ou execução que não estava disponível; trecho que não pôde ser lido.

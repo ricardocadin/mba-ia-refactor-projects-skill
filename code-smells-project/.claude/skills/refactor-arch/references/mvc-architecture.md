@@ -368,6 +368,8 @@ Siga primeiro a convenção da linguagem/framework do projeto (snake_case, camel
 
 Mantenha **um padrão por projeto**; consistência importa mais que a escolha em si.
 
+**Pasta da camada de dados:** nos exemplos deste documento a camada de acesso a dados aparece como `repositories/`, mas o checklist de aderência e a atividade falam em **Models**. Regra da skill: a pasta da camada de dados se chama **`models/`** (arquivos `<entidade>_model`, sem estado, com consultas parametrizadas, recebendo a conexão e sem fazer `commit`), a menos que o projeto já tenha outra convenção (por exemplo `repositories/` ou entidades ORM em `models/`), que deve ser preservada. Quando houver entidades ORM, `models/` guarda as entidades e a camada de consultas pode ficar em `repositories/`. Os nomes dos arquivos seguem o idioma do domínio do projeto (um projeto com domínio em português usa `produto_model`, não `product_model`).
+
 ### 5.2 Funções e métodos
 
 - Use verbos que expressem a intenção: `create_order`, `findById`, `listActiveUsers`.

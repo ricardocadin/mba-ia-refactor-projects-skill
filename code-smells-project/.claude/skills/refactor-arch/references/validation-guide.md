@@ -266,6 +266,8 @@ curl -s "http://localhost:$PORT/items/search?q=zzzz')%20OR%201=1--%20"
 # esperado agora: lista vazia (o payload é tratado como valor literal)
 ```
 
+Reexecute também a detecção do **AP-14 incluindo configuração morta**: para cada chave que a refatoração ainda escreve (`app.config.update(...)`, variáveis de ambiente lidas), confirme que existe um ponto de leitura (ver "Como confirmar" do AP-14 no catálogo). Chave só escrita impede declarar "Zero anti-patterns".
+
 Use exatamente a PoC gravada no baseline (o payload do exemplo acima é só ilustrativo e depende da query). Se ela não explorava a falha antes, o resultado "vazio" agora não prova nada. Provar que o ataque parou de funcionar vale mais do que afirmar que o código está seguro. Só declare um anti-pattern como eliminado se a verificação acima confirmar.
 
 ---
@@ -288,6 +290,8 @@ Não escreva "Zero anti-patterns remaining" sem ter reexecutado a detecção do 
 |---|---|---|
 | Temporária (`VAL_DIR`, fora do projeto) | venv, banco descartável, logs de boot, respostas brutas do baseline e do after | Do início ao fim da Fase 3. O baseline bruto precisa existir até a comparação do Passo 3.2 |
 | Persistente (relatório do projeto) | Evidência legível para o usuário conferir: tabela `Endpoint comparison`, PoCs, `Validation`, `Not verified` | Fica no repositório, no arquivo do relatório |
+
+Antes de encerrar, o **projeto** também precisa ficar limpo: execuções da aplicação criam `__pycache__`, `*.pyc`, bancos locais e logs dentro dele. Rode as execuções de validação com `PYTHONDONTWRITEBYTECODE=1` e com o diretório de trabalho em `VAL_DIR` quando possível, apague o que sobrar e garanta um `.gitignore` que cubra esses arquivos (stack Python: `__pycache__/`, `*.pyc`, `.venv/`, `.env`, banco local). Confira com `git status`.
 
 Só apague o `VAL_DIR` depois de gravar o bloco da Fase 3 no relatório. Se a sessão for interrompida durante a Fase 3, o baseline bruto pode se perder: refaça-o **antes** de qualquer edição. Se a refatoração já começou, informe o usuário de que o baseline original só pode ser recuperado a partir do controle de versão. Não grave logs nem respostas brutas na raiz do projeto.
 
