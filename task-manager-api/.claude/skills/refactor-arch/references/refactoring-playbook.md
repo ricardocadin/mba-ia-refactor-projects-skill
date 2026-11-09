@@ -173,6 +173,7 @@ Camada de destino: **Config** (`config/`). É o único lugar que lê o ambiente;
 Python/Flask (`config/settings.py`):
 ```python
 import os
+import secrets
 
 
 class Config:
@@ -185,10 +186,14 @@ class Config:
         self.PORT = int(env.get("PORT", "5000"))
         self.TOKEN_MAX_AGE = int(env.get("TOKEN_MAX_AGE", "3600"))   # segundos; validade do token (PB-03)
         self.LOG_LEVEL = env.get("LOG_LEVEL", "INFO")                # nível de log (PB-14)
+        # origens permitidas pelo CORS, separadas por vírgula; vazio = nenhuma origem de navegador
+        self.CORS_ORIGINS = [o.strip() for o in env.get("CORS_ORIGINS", "").split(",") if o.strip()]
         if not self.SECRET_KEY:
             if not self.DEBUG:
                 raise RuntimeError("SECRET_KEY não definida no ambiente")
-            self.SECRET_KEY = "dev-only"                  # apenas em desenvolvimento
+            # só em desenvolvimento: chave aleatória por processo, sem literal no código
+            # (os tokens emitidos não sobrevivem a um reinício)
+            self.SECRET_KEY = secrets.token_hex(32)
 ```
 
 Node/Express (`config/env.js`):
@@ -196,12 +201,13 @@ Node/Express (`config/env.js`):
 function loadConfig(env = process.env) {
   const config = {
     debug: env.APP_DEBUG === "1",
-    secret: env.SECRET_KEY,
+    secret: env.SECRET_KEY || (env.APP_DEBUG === "1" ? require("crypto").randomBytes(32).toString("hex") : undefined),
     databaseUrl: env.DATABASE_URL || "./app.db",
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 3000),
     tokenMaxAge: Number(env.TOKEN_MAX_AGE || 3600),   // segundos; validade do token (PB-03)
     logLevel: env.LOG_LEVEL || "info",                // nível de log (PB-14)
+    corsOrigins: (env.CORS_ORIGINS || "").split(",").map((o) => o.trim()).filter(Boolean),
   };
   if (!config.secret && !config.debug) throw new Error("SECRET_KEY não definida no ambiente");
   return config;
@@ -219,7 +225,16 @@ res.json({ status: "ok", database: "connected" });                    // Node
 
 Java/Spring: `@Value("${app.secret}")` lido de `application.yml` com `${APP_SECRET}`. PHP: `getenv('DB_PASS')`.
 
-**Decisão humana:** (1) um segredo que já foi versionado ou exposto em resposta deve ser considerado comprometido; a rotação e a limpeza do histórico do VCS cabem ao usuário. (2) Onde o segredo de produção é guardado (variável do deploy, cofre). (3) Se o bind em todas as interfaces (`0.0.0.0`) é aceitável no ambiente.
+**CORS (parte c do AP-02):** a política de CORS vem da Config e lista as origens permitidas, em vez de aceitar qualquer origem.
+```python
+CORS(app, origins=config.CORS_ORIGINS)          # Python (flask-cors)
+```
+```javascript
+app.use(cors({ origin: config.corsOrigins }));   // Node (pacote cors)
+```
+Java/Spring: `allowedOrigins(...)` com a lista da configuração. PHP: devolver `Access-Control-Allow-Origin` somente para origens da lista.
+
+**Decisão humana:** (1) um segredo que já foi versionado ou exposto em resposta deve ser considerado comprometido; a rotação e a limpeza do histórico do VCS cabem ao usuário. (2) Onde o segredo de produção é guardado (variável do deploy, cofre). (3) Se o bind em todas as interfaces (`0.0.0.0`) é aceitável no ambiente. (4) Quais origens o CORS deve permitir e o padrão quando a lista está vazia (nenhuma origem de navegador, ou `*` só em desenvolvimento): restringir muda o que navegadores de outras origens conseguem acessar; clientes que não são navegador (curl, outros serviços) não são afetados.
 
 **Como validar**
 1. O segredo não aparece no código nem em respostas (resultado esperado: nenhuma linha):
@@ -230,6 +245,12 @@ curl -s http://localhost:PORT/health | grep -iE "secret|debug|db_path|password" 
 2. Falha rápida: iniciar sem `SECRET_KEY` e sem `APP_DEBUG=1` deve abortar com mensagem clara; com a variável definida, a aplicação sobe.
 3. O endpoint de saúde continua respondendo 200. A ausência dos campos sensíveis é mudança intencional de segurança.
 4. `git log -S"<valor-antigo>" --oneline` mostra se o segredo está no histórico (nesse caso, rotacionar).
+5. CORS: uma origem não permitida não recebe o cabeçalho, e uma permitida recebe (resultado esperado: a primeira linha imprime "OK" e a segunda mostra o cabeçalho):
+```bash
+curl -s -i -H "Origin: https://origem-nao-permitida.exemplo" http://localhost:PORT/ | grep -i access-control-allow-origin || echo "OK: sem cabeçalho"
+curl -s -i -H "Origin: https://origem-permitida.exemplo" http://localhost:PORT/ | grep -i access-control-allow-origin
+```
+6. Sem literal de chave de desenvolvimento no código: o fallback de `APP_DEBUG=1` gera um valor aleatório (a busca do passo 1 continua vazia).
 
 ---
 
@@ -1328,6 +1349,8 @@ app.use(express.json());                  // sem dependência extra
 ```
 
 Java: `Integer.valueOf(x)`. PHP: PDO ou `mysqli` com prepared statements.
+
+**Item "não confirmado" não é alterado.** Se a depreciação não foi confirmada pela versão declarada (por exemplo, `Model.query.get()` sem o SQLAlchemy pinado, ou `datetime.utcnow()` sem versão do Python), a substituição não é aplicada, mesmo que pareça inofensiva e devolva o mesmo resultado. Só se aplica com a versão confirmada ou com decisão explícita do usuário, e então entra em `Intentional changes`.
 
 **Decisão humana:** atualizar a versão fixada de uma dependência e aceitar mudanças visíveis ao cliente (por exemplo, o formato de um timestamp serializado) são decisões do usuário.
 

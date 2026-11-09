@@ -65,15 +65,15 @@ Distribuição: 4 CRITICAL, 4 HIGH, 4 MEDIUM, 2 LOW (14 anti-patterns).
 **Definição:** chaves, senhas, tokens ou caminhos sensíveis escritos diretamente no código-fonte, ou devolvidos em respostas da API ou em logs.
 
 **Sinais**
-- Python: `app.config["SECRET_KEY"] = "texto-literal"`, `DEBUG = True` fixo, `password = "..."`
-- Node: `const secret = "..."`, `jwt.sign(x, "literal")`
-- Java: `@Value` ausente com literal em `static final String SECRET`
-- PHP: `define('DB_PASS', '...')` em arquivo versionado
-- Qualquer: endpoint de saúde/diagnóstico que devolve `secret_key`, `db_path`, `debug`; credenciais de serviço ou de banco no código; `debug=True` com `host=0.0.0.0`
+- Python: `app.config["SECRET_KEY"] = "texto-literal"`, `DEBUG = True` fixo, `password = "..."`; `CORS(app)` sem lista de origens
+- Node: `const secret = "..."`, `jwt.sign(x, "literal")`; `app.use(cors())` sem opções
+- Java: `@Value` ausente com literal em `static final String SECRET`; `@CrossOrigin("*")` ou `allowedOrigins("*")`
+- PHP: `define('DB_PASS', '...')` em arquivo versionado; `header('Access-Control-Allow-Origin: *')`
+- Qualquer: endpoint de saúde/diagnóstico que devolve `secret_key`, `db_path`, `debug`; credenciais de serviço ou de banco no código; `debug=True` com `host=0.0.0.0`; política de CORS que aceita qualquer origem
 
-**Granularidade:** reporte como achados separados (a) segredos e credenciais hardcoded ou expostos em respostas e (b) modo debug ou bind de rede inseguro (`debug=True`, `host=0.0.0.0`). Cada achado cita seus próprios arquivos e linhas.
+**Granularidade:** reporte como achados separados (a) segredos e credenciais hardcoded ou expostos em respostas, (b) modo debug ou bind de rede inseguro (`debug=True`, `host=0.0.0.0`) e (c) CORS totalmente aberto. Cada achado cita seus próprios arquivos e linhas. **Severidade do CORS:** o achado (c) é MEDIUM por padrão (a API aceita chamadas de navegadores de qualquer origem), e sobe para HIGH se a API usa cookies ou sessão com credenciais habilitadas; os achados (a) e (b) seguem CRITICAL.
 
-**Como confirmar:** o literal é um segredo real ou de uso produtivo, e não um valor de teste claramente isolado? Procure o mesmo valor em respostas HTTP (`/health`, `/config`) e no controle de versão. Se o valor está no repositório ou sai em alguma resposta, está exposto.
+**Como confirmar:** o literal é um segredo real ou de uso produtivo, e não um valor de teste claramente isolado? Para o CORS, a API aceita qualquer origem (`*`, ou o padrão da biblioteca sem lista de origens)? Teste: `curl -i -H "Origin: https://qualquer.exemplo" <url>` e veja se a resposta traz `Access-Control-Allow-Origin` para essa origem. Procure o mesmo valor em respostas HTTP (`/health`, `/config`) e no controle de versão. Se o valor está no repositório ou sai em alguma resposta, está exposto.
 
 **Impacto:** comprometimento de sessões, tokens e contas; acesso ao debugger remoto quando o modo debug está ativo.
 **Transformação:** → PB-02
