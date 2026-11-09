@@ -6,7 +6,7 @@ Skill do Claude Code que **analisa, audita e refatora para MVC** qualquer projet
 |---|---|---|---|---|
 | `code-smells-project/` | Python / Flask | `.claude/skills/refactor-arch/` | [audit-project-1.md](reports/audit-project-1.md) | Concluído |
 | `ecommerce-api-legacy/` | Node.js / Express | cópia idêntica | [audit-project-2.md](reports/audit-project-2.md) | Concluído |
-| `task-manager-api/` | Python / Flask (já em camadas) | cópia idêntica | `reports/audit-project-3.md` | **A executar** |
+| `task-manager-api/` | Python / Flask (já em camadas) | cópia idêntica | [audit-project-3.md](reports/audit-project-3.md) | Concluído |
 
 O enunciado original do desafio está no histórico do repositório (primeiro commit).
 
@@ -86,7 +86,7 @@ A análise não foi minuciosa: foi focada nos pontos mais críticos. Utilizei a 
 - **Decisões humanas antes de editar.** Antes da primeira edição a skill levanta todas as decisões (as marcadas no relatório, as dos playbooks e qualquer mudança de comportamento) e pergunta uma a uma. **A resposta do usuário é vinculante:** se não puder ser cumprida como foi dita, a skill para e pergunta de novo.
 - **Checklist como portão de saída.** Cada fase termina com um checklist em que cada item só é marcado com evidência (comando, contagem ou `arquivo:linha`). Item não verificado fica `[ ]`.
 - **Prova de que nada quebrou.** A Fase 3 grava um baseline da aplicação original antes de editar (incluindo caminhos de erro e a PoC de cada vulnerabilidade), valida a cada bloco pequeno e compara o resultado final com `compare.py`. Cada `✓` do relatório corresponde a uma verificação executada.
-- **Relatório auditável.** Cada finding tem `arquivo:linha` conferido com comando, evidência, impacto e recomendação apontando o playbook (`AP-xx` corrige com `PB-xx`). A contagem é determinística: o catálogo define quando um mesmo AP gera mais de um achado (AP-02, AP-03 e AP-10).
+- **Relatório auditável.** Cada finding tem `arquivo:linha` conferido com comando, evidência, impacto e recomendação apontando o playbook (`AP-xx` corrige com `PB-xx`). A contagem é determinística: o catálogo define quando um mesmo AP gera mais de um achado (AP-02, AP-03, AP-10 e AP-13).
 
 ### Anti-patterns no catálogo (14) e por quê
 
@@ -141,18 +141,18 @@ O AP-12 só considera a versão **declarada** nos arquivos do projeto; sem vers�
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | code-smells-project | 4 / ~780 | 6 | 5 | 4 | 2 | **17** |
 | ecommerce-api-legacy | 3 / ~180 | 4 | 5 | 4 | 2 | **15** |
-| task-manager-api | | | | | | _a executar_ |
+| task-manager-api | 15 / ~1.160 | 5 | 2 | 4 | 3 | **14** |
 
-Relatórios completos: [audit-project-1.md](reports/audit-project-1.md), [audit-project-2.md](reports/audit-project-2.md). Cada um traz a auditoria, o bloco da Fase 3, a comparação endpoint a endpoint e o checklist.
+Relatórios completos: [audit-project-1.md](reports/audit-project-1.md), [audit-project-2.md](reports/audit-project-2.md), [audit-project-3.md](reports/audit-project-3.md). Cada um traz a auditoria, o bloco da Fase 3, a comparação endpoint a endpoint e o checklist.
 
 Critérios de aceite da atividade:
 
 | Critério | Projeto 1 | Projeto 2 | Projeto 3 |
 |---|:---:|:---:|:---:|
-| Fase 1 detecta a stack | OK | OK | |
-| Fase 2 encontra no mínimo 5 findings | OK (17) | OK (15) | |
-| Fase 2 inclui CRITICAL ou HIGH | OK | OK | |
-| Aplicação funciona após a refatoração | OK | OK | |
+| Fase 1 detecta a stack | OK | OK | OK |
+| Fase 2 encontra no mínimo 5 findings | OK (17) | OK (15) | OK (14) |
+| Fase 2 inclui CRITICAL ou HIGH | OK | OK | OK |
+| Aplicação funciona após a refatoração | OK | OK | OK |
 
 ### Cobertura da análise manual pela skill (Fase 2)
 
@@ -162,7 +162,7 @@ A atividade pede que a Fase 2 encontre pelo menos 5 dos problemas da análise ma
 |---|:---:|:---:|---|
 | code-smells-project | 7 | **7** | |
 | ecommerce-api-legacy | 7 | **6** | Nomes de variáveis ruins (`u`, `e`, `p`, `cid`, `cc`, em `AppManager.js:29-33`): na execução, o catálogo ainda não cobria nomenclatura; o AP-13 passou a cobri-la depois |
-| task-manager-api | 6 | _a executar_ | |
+| task-manager-api | 6 | **5** | CORS totalmente aberto (`app.py:15`): na execução o catálogo não tinha sinal para isso; o AP-02 passou a cobri-lo depois |
 
 Na severidade houve divergências esperadas: a análise manual classificou o `models.py` multi-domínio como MEDIUM (SRP) e os erros genéricos como LOW, enquanto a skill os classifica como CRITICAL (God Module) e MEDIUM (AP-10), seguindo a escala da atividade.
 
@@ -196,7 +196,21 @@ ANTES                         DEPOIS
                                   └── middlewares/       (autenticação, handler global de erros)
 ```
 
-**task-manager-api:** _a executar._
+**task-manager-api** (15 arquivos e ~1.160 linhas, para 45 módulos e ~1.490 linhas, em 10 pastas): projeto já em camadas, em que a skill preservou o que existia e acrescentou o que faltava.
+
+```
+ANTES                             DEPOIS
+├── app.py                        ├── app.py                 (composition root: create_app)
+├── database.py                   ├── database.py  seed.py
+├── seed.py                       ├── config/  constants/  exceptions/  validators/   (novos)
+├── models/ (category, task,      ├── models/                (entidades ORM + *_model.py de acesso a dados
+│   user)                         │                           + transaction.py)
+├── routes/ (report, task,        ├── routes/                (só registram rotas; categoria e sistema separados)
+│   user: rota + regra + dados)   ├── controllers/  views/   (novos: HTTP e serialização)
+├── services/                     ├── services/              (regras de negócio e transações)
+│   └── notification_service      └── middlewares/           (handler global de erros, autenticação)
+└── utils/helpers                 (removidos: utils/ e NotificationService, ambos sem uso)
+```
 
 ### Checklist de validação preenchido
 
@@ -216,7 +230,9 @@ As evidências de cada item estão nos relatórios (seção "Checklist de Valida
 
 #### Projeto 3: task-manager-api
 
-_A executar._
+**Fase 1:** [x] linguagem · [x] framework · [x] domínio (Task Manager; 3 tabelas, 22 endpoints) · [x] número de arquivos (15)
+**Fase 2:** [x] segue o template · [x] arquivo e linhas exatos · [x] ordenado por severidade · [x] mínimo de 5 (14) · [x] APIs deprecated avaliadas (`datetime.utcnow()` e `Model.query.get()`, ver relatório) · [x] pausa e confirmação
+**Fase 3:** [x] estrutura MVC · [x] configuração extraída · [x] models · [x] views/routes · [x] controllers · [x] error handling centralizado · [x] entry point claro · [x] boot sem erros · [x] endpoints originais respondem (111 chamadas: 87 idênticas, 24 mudanças intencionais aprovadas, 0 regressões)
 
 ### Itens pendentes por decisão do autor
 
@@ -224,6 +240,7 @@ Registrados nos relatórios, com o motivo:
 
 - **Projeto 1:** `PUT /produtos/<id>` continua sem validar tamanho do nome e categoria (AP-10), mantido por decisão do usuário.
 - **Projeto 2:** `DELETE /api/users/:id` continua deixando matrículas e pagamentos órfãos (AP-08), por decisão do usuário. O `prebuild-install` continua deprecated no lock (AP-12) porque o `sqlite3` 6.0.1, versão mais nova existente, ainda depende dele.
+- **Projeto 3:** só as rotas destrutivas exigem autenticação (AP-03), por decisão do usuário; as demais (`GET /users`, `POST /users`, `POST /tasks`) seguem abertas. O `datetime.utcnow()` permanece em 12 linhas (AP-12): o projeto não declara a versão do Python e trocar por datas com fuso mudaria o formato dos timestamps. O relatório recomenda `datetime.now(timezone.utc)`.
 
 ### Logs e screenshots das aplicações rodando
 
@@ -235,6 +252,9 @@ INFO __main__: Servidor iniciado em http://127.0.0.1:5000
 
 # ecommerce-api-legacy (ADMIN_TOKEN=... npm start)
 INFO Frankenstein LMS rodando na porta 3001...   # validação feita com PORT=3001; o padrão é 3000
+
+# task-manager-api (SECRET_KEY=... python app.py)
+ * Running on http://127.0.0.1:5059   # validação feita com PORT=5059; o padrão é 5000
 ```
 
 ### Observações sobre o comportamento da skill nas stacks
@@ -243,7 +263,9 @@ INFO Frankenstein LMS rodando na porta 3001...   # validação feita com PORT=30
 - **Express (projeto 2):** nenhum SQL Injection (todas as queries já eram parametrizadas, e a skill registrou o AP-01 como avaliado e descartado), mas achou o checkout sem transação, estado global, hash de senha caseiro e uma queda do processo com `card` numérico (confirmada no baseline, corrigida depois). É o projeto em que o AP-12 encontrou algo de verdade.
 - **A skill se adaptou à stack sem mudança de sinais:** nenhum ajuste específico de Node foi necessário; os ajustes feitos entre as execuções foram gerais.
 - **Reprodutibilidade:** uma execução limpa do projeto 1 em worktree, a partir do commit inicial e em sessão nova, completou o fluxo inteiro; a diferença de contagem (15 contra 17) veio da granularidade e foi corrigida no catálogo.
-- **Projeto parcialmente organizado (projeto 3):** _a observar._
+- **Projeto parcialmente organizado (projeto 3):** a skill não recriou tudo em outra estrutura: manteve `models/`, `routes/` e `services/` e acrescentou as camadas que faltavam (controllers, views, validators, middlewares, config). As rotas, que acumulavam validação, regra, acesso a dados e serialização, passaram a só registrar caminhos. As consultas N+1 caíram de 17 para 1 em `/tasks`, de 4 para 2 em `/users`, de 5 para 2 em `/categories` e de 19 para 10 em `/reports/summary`.
+- **Lacuna encontrada pela análise manual:** o CORS aberto do projeto 3 não foi achado na execução. Ele levou o AP-02 a ganhar um terceiro achado (CORS totalmente aberto) e o playbook a trazer a configuração por lista de origens. O mesmo aconteceu com a nomenclatura de variáveis do projeto 2.
+- **APIs deprecated sem versão declarada:** o projeto 3 não declara a versão do Python. A regra estrita da skill (só vale a versão declarada) deixou o `datetime.utcnow()` como não confirmado, com a recomendação do equivalente moderno no relatório. Já o `Model.query.get()` pôde ser confirmado, porque a `flask-sqlalchemy` pinada exige `sqlalchemy>=2.0.16`.
 
 ---
 
@@ -287,9 +309,12 @@ cd code-smells-project && pip install -r requirements.txt && APP_DEBUG=1 python 
 
 # Projeto 2: as rotas admin exigem Authorization: Bearer <ADMIN_TOKEN>
 cd ecommerce-api-legacy && npm install && ADMIN_TOKEN=meu-token npm start                # http://localhost:3000
+
+# Projeto 3: o seed vem antes do app; exige SECRET_KEY (ou APP_DEBUG=1 em desenvolvimento)
+cd task-manager-api && pip install -r requirements.txt && APP_DEBUG=1 python seed.py && APP_DEBUG=1 python app.py   # http://127.0.0.1:5000
 ```
 
 3. Chame os endpoints originais (`api.http` no projeto 2; no projeto 1, as rotas `/produtos`, `/usuarios`, `/pedidos`, `/login`, `/relatorios/vendas` e `/health`) e confira que respondem como no baseline.
 4. Para comparar baseline e depois por conta própria, use `python .claude/skills/refactor-arch/scripts/compare.py <dir_baseline> <dir_after>` (código de saída 1 indica divergência).
 
-**Projeto 3:** _a documentar após a execução._
+No projeto 3, `DELETE /tasks/<id>` e `DELETE /categories/<id>` exigem `Authorization: Bearer <token>` do `POST /login`, e `PUT` e `DELETE /users/<id>` exigem o token de um usuário `admin`. O CORS não aceita nenhuma origem de navegador por padrão: liste as permitidas em `CORS_ORIGINS`.
