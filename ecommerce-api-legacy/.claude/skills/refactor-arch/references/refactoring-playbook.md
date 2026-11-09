@@ -24,7 +24,7 @@ Cada playbook segue a mesma ordem de seções: **Descrição** (problema e quand
 | [PB-10](#pb-10--validação-ausente-e-tratamento-genérico-de-erros-ap-10) | AP-10 Validação ausente e tratamento genérico de erros | MEDIUM | Controller (validação) + Middlewares (handler global) |
 | [PB-11](#pb-11--código-duplicado-ap-11) | AP-11 Código duplicado | MEDIUM | View (Serializer) + Service/Validator compartilhados |
 | [PB-12](#pb-12--uso-de-apis-deprecated-ou-obsoletas-ap-12) | AP-12 Uso de APIs deprecated ou obsoletas | MEDIUM (padrão; ajustável) | Todas as camadas |
-| [PB-13](#pb-13--magic-numbers-e-strings-soltas-ap-13) | AP-13 Magic numbers e strings soltas | LOW | `constants/` |
+| [PB-13](#pb-13--magic-numbers-strings-soltas-e-nomenclatura-ruim-ap-13) | AP-13 Magic numbers, strings soltas e nomenclatura ruim | LOW | `constants/` e nomes em todas as camadas |
 | [PB-14](#pb-14--logging-por-print-e-código-morto-ap-14) | AP-14 Logging por print e código morto | LOW | Middlewares (logging) + higiene geral |
 
 ## Convenções comuns
@@ -1344,7 +1344,7 @@ node --throw-deprecation src/server.js        # ou: NODE_OPTIONS=--throw-depreca
 
 ---
 
-## PB-13 — Magic numbers e strings soltas (AP-13)
+## PB-13 — Magic numbers, strings soltas e nomenclatura ruim (AP-13)
 **Descrição:** valores literais com significado de negócio (status, categorias, faixas e percentuais, limites de tamanho, versão) espalhados e repetidos, sem nome. Viola o DRY e a legibilidade (seção 5.5 de `mvc-architecture.md`: constantes e enums em vez de valores mágicos). Mudar uma regra exige caçar literais em vários arquivos e camadas. Aplicar quando o mesmo literal com significado de negócio aparecer em mais de um arquivo ou camada.
 
 **Problema (código)**
@@ -1422,6 +1422,37 @@ Java: `public enum OrderStatus { PENDING, APPROVED }` e `public static final int
 
 Mensagens que listam valores (por exemplo, "Válidas: [...]") devem ser geradas a partir da constante mantendo o texto original. Literais de DDL (`DEFAULT 'pending'`) fazem parte do esquema e podem permanecer, com comentário apontando para a constante. **Decisão humana:** se faixas e taxas de negócio passam a ser configuráveis (ambiente ou tabela) em vez de constantes.
 
+**Nomenclatura (parte b do AP-13)**
+
+Renomeie variáveis locais, parâmetros e funções internas para nomes que revelem o conteúdo, no idioma do domínio do projeto. **Nunca renomeie o que faz parte de um contrato externo:** chaves de corpo JSON, parâmetros de query, cabeçalhos, rotas, colunas do banco e nomes exportados que outros sistemas consomem. Só o identificador local muda; a chave do contrato continua a mesma.
+
+Node/Express:
+```javascript
+// antes
+let u = req.body.usr;
+let cid = req.body.c_id;
+let cc = req.body.card;
+
+// depois: o contrato do corpo (usr, c_id, card) não muda, só as variáveis locais
+const userName = req.body.usr;
+const courseId = req.body.c_id;
+const cardNumber = req.body.card;
+```
+
+Python/Flask:
+```python
+# antes
+def calc(d, t):
+    r = d * t
+    return r
+
+# depois
+def calculate_total(unit_price, quantity):
+    return unit_price * quantity
+```
+
+Faça a renomeação junto da extração de cada camada (ou como último bloco), com a aplicação funcionando antes e depois. Não renomeie o que a convenção do framework ou da linguagem já consagra (`req`, `res`, `next`, `db`, `cb`, `i`, `e` em captura de exceção).
+
 **Como validar**
 1. Os literais existem só em `constants/` e no DDL (resultado esperado: nenhuma linha fora desses lugares):
 ```bash
@@ -1437,6 +1468,7 @@ done                                              # esperado: 2xx para todos
 curl -s -w " [%{http_code}]\n" -X PUT http://localhost:PORT/orders/1/status -H "Content-Type: application/json" -d '{"status":"x"}'   # esperado: 400
 ```
 3. Testes de fronteira da regra (por exemplo, descontos do PB-05) continuam passando usando as constantes; respostas iguais ao baseline.
+4. Nomenclatura: nenhuma variável de 1 ou 2 letras fora das exceções (resultado esperado: nenhuma linha). Exemplos: `grep -rnE "\b(let|const|var)\s+[a-z]{1,2}\b" src/` (Node) e `grep -rnE "^\s*[a-z]{1,2}\s*=[^=]" src/ app/` (Python), descartando contadores de laço e `e`/`err`. As respostas continuam iguais ao baseline, porque renomear identificadores locais não altera nenhum contrato.
 
 ---
 

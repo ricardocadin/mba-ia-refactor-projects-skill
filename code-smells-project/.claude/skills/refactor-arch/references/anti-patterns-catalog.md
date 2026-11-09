@@ -33,7 +33,7 @@ Quando um achado cabe em mais de um anti-pattern, classifique-o uma só vez, pel
 | AP-10 | Validação ausente e tratamento genérico de erros | MEDIUM | Robustez |
 | AP-11 | Código duplicado | MEDIUM | Padronização |
 | AP-12 | Uso de APIs deprecated ou obsoletas | MEDIUM | Manutenibilidade |
-| AP-13 | Magic numbers e strings soltas | LOW | Legibilidade |
+| AP-13 | Magic numbers, strings soltas e nomenclatura ruim | LOW | Legibilidade |
 | AP-14 | Logging por print e código morto | LOW | Legibilidade |
 
 Distribuição: 4 CRITICAL, 4 HIGH, 4 MEDIUM, 2 LOW (14 anti-patterns).
@@ -285,19 +285,21 @@ Distribuição: 4 CRITICAL, 4 HIGH, 4 MEDIUM, 2 LOW (14 anti-patterns).
 
 ---
 
-## AP-13 — Magic numbers e strings soltas
+## AP-13 — Magic numbers, strings soltas e nomenclatura ruim
 **Severidade:** LOW · **Categoria:** Legibilidade
 
-**Definição:** valores literais com significado de negócio (limites, percentuais, status, categorias, mensagens) espalhados pelo código sem nome ou constante.
+**Definição:** (a) valores literais com significado de negócio (limites, percentuais, status, categorias, mensagens) espalhados pelo código sem nome ou constante; (b) nomes de variáveis, parâmetros e funções que não revelam o que guardam ou fazem (letras soltas, abreviações crípticas), obrigando a ler o código ao redor para entendê-los.
 
 **Sinais**
-- Python: `if faturamento > 10000: desconto = faturamento * 0.1`; listas literais de status e categorias dentro de funções; `"pendente"`, `"aprovado"` repetidos em várias camadas
-- Node: números e strings literais em `if`/`switch`
-- Java: ausência de `enum` ou `static final` para status
-- PHP: literais em condições e queries
-- Qualquer: o mesmo literal em mais de um arquivo; faixas de valores sem comentário
+- Python: `if faturamento > 10000: desconto = faturamento * 0.1`; listas literais de status e categorias dentro de funções; `"pendente"`, `"aprovado"` repetidos em várias camadas; variáveis de 1 ou 2 letras fora de laços (`d`, `t`, `r`, `cc`) e parâmetros `a`, `b` em funções de domínio
+- Node: números e strings literais em `if`/`switch`; `let u = req.body.usr;`, `let cid = req.body.c_id;`, `let cc = req.body.card;`
+- Java: ausência de `enum` ou `static final` para status; variáveis como `s`, `o`, `lst`
+- PHP: literais em condições e queries; variáveis como `$d`, `$r`
+- Qualquer: o mesmo literal em mais de um arquivo; faixas de valores sem comentário; abreviação que exige olhar a origem do valor para entender; o mesmo conceito com nomes diferentes em arquivos diferentes; nome que contradiz o conteúdo
 
-**Como confirmar:** pergunte "o que significa este número ou texto?". Se a resposta exige conhecer o negócio, e o valor aparece em mais de um lugar, é magic value.
+**Granularidade:** reporte como achados separados (a) magic numbers e strings soltas e (b) nomenclatura ruim. Cada achado cita seus próprios arquivos e linhas.
+
+**Como confirmar:** para os literais, pergunte "o que significa este número ou texto?". Se a resposta exige conhecer o negócio, e o valor aparece em mais de um lugar, é magic value. Para os nomes, leia a linha sem o contexto: o nome diz o que guarda (e a unidade, quando houver)? Nome de 1 ou 2 letras em escopo de mais de cerca de 10 linhas, ou que entra em regra de negócio, é achado. **Descarte:** contadores de laço (`i`, `j`, `k`), `e` ou `err` em captura de exceção, `_` para valor ignorado, convenções do framework (`req`, `res`, `next`, `db`, `cb`) e identificadores de domínio matemático (`x`, `y`).
 
 **Impacto:** regras difíceis de localizar e alterar; risco de divergência entre os pontos de uso.
 **Transformação:** → PB-13
