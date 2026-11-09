@@ -242,20 +242,62 @@ Registrados nos relatórios, com o motivo:
 - **Projeto 2:** `DELETE /api/users/:id` continua deixando matrículas e pagamentos órfãos (AP-08), por decisão do usuário. O `prebuild-install` continua deprecated no lock (AP-12) porque o `sqlite3` 6.0.1, versão mais nova existente, ainda depende dele.
 - **Projeto 3:** só as rotas destrutivas exigem autenticação (AP-03), por decisão do usuário; as demais (`GET /users`, `POST /users`, `POST /tasks`) seguem abertas. O `datetime.utcnow()` permanece em 12 linhas (AP-12): o projeto não declara a versão do Python e trocar por datas com fuso mudaria o formato dos timestamps. O relatório recomenda `datetime.now(timezone.utc)`.
 
-### Logs e screenshots das aplicações rodando
+### Logs das aplicações rodando após a refatoração
 
-> **A INSERIR:** prints ou logs de cada aplicação rodando após a refatoração. A comparação endpoint a endpoint (baseline x depois) está nos relatórios. Exemplos de boot limpo coletados na validação:
+Logs reais, capturados de um checkout limpo do commit `703eba7` (Python 3.15.2, Node v26.13.0, Windows). Cada aplicação foi iniciada pelo comando do seu README, em uma porta de teste, e as chamadas mostram status e um trecho do corpo. A comparação completa com o baseline (todos os endpoints) está nos relatórios.
+
+**code-smells-project** (`SECRET_KEY=... python app.py`)
 
 ```
-# code-smells-project (APP_DEBUG=1 python app.py)
-INFO __main__: Servidor iniciado em http://127.0.0.1:5000
+2026-11-09 15:37:01,249 INFO __main__: Servidor iniciado em http://127.0.0.1:5201
+ * Serving Flask app 'src.app'
+ * Debug mode: off
 
-# ecommerce-api-legacy (ADMIN_TOKEN=... npm start)
-INFO Frankenstein LMS rodando na porta 3001...   # validação feita com PORT=3001; o padrão é 3000
-
-# task-manager-api (SECRET_KEY=... python app.py)
- * Running on http://127.0.0.1:5059   # validação feita com PORT=5059; o padrão é 5000
+GET    /health                                   -> 200  {"ambiente": "producao", "counts": {"pedidos": 0, "produtos": 10, "usuarios": 3}, "database": "connected", ...
+GET    /produtos                                 -> 200  10 itens
+GET    /usuarios                                 -> 200  3 itens                      (sem o campo senha)
+POST   /login                                    -> 200  {"dados": {"email": "admin@loja.com", "id": 1, "nome": "Admin", "tipo": "admin"}, "mensagem": "Login OK", ...
+POST   /login (SQL Injection: ' OR '1'='1' --)   -> 401  {"erro": "Email ou senha inválidos", "sucesso": false}
+GET    /produtos/busca?q=zzzz') OR 1=1--         -> 200  0 itens                      (antes: todos os produtos)
+POST   /pedidos                                  -> 201  {"dados": {"pedido_id": 1, "total": 11999.98}, "mensagem": "Pedido criado com sucesso", ...
+POST   /admin/reset-db (sem token)               -> 401  {"erro": "Token ausente"}
+POST   /admin/query                              -> 404  (rota removida)
 ```
+
+**ecommerce-api-legacy** (`ADMIN_TOKEN=... npm start`)
+
+```
+2026-11-09T18:37:05.849Z INFO Frankenstein LMS rodando na porta 3201...
+2026-11-09T18:37:28.018Z INFO Checkout concluído: curso=1 usuario=2 matricula=2      (o log não traz mais cartão nem chave)
+
+POST   /api/checkout (cartão aprovado)           -> 200  {"msg": "Sucesso", "enrollment_id": 2}
+POST   /api/checkout (cartão recusado)           -> 400  Pagamento recusado
+POST   /api/checkout (card numérico)             -> 400  Bad Request                  (antes: derrubava o processo)
+GET    /api/admin/financial-report (sem token)   -> 401  Unauthorized
+GET    /api/admin/financial-report (+token)      -> 200  [{"course": "Clean Architecture", "revenue": 1994, "students": [...
+DELETE /api/users/1 (sem token)                  -> 401  Unauthorized
+```
+
+**task-manager-api** (`SECRET_KEY=... python seed.py` e depois `python app.py`)
+
+```
+Seed concluído com sucesso!
+  3 usuários
+  4 categorias
+  10 tasks
+ * Serving Flask app 'app'
+ * Debug mode: off
+
+GET    /health                                   -> 200  {"status": "ok", "timestamp": "2026-11-09 15:37:27.570465"}
+GET    /tasks                                    -> 200  10 itens
+GET    /users/1                                  -> 200  campos: active, created_at, email, id, name, role, tasks     (sem password)
+POST   /login                                    -> 200  {"message": "Login realizado com sucesso", "token": "eyJpZCI6MSwicm...", ...
+DELETE /tasks/1 (sem token)                      -> 401  {"error": "Token ausente"}
+DELETE /tasks/1 (+token)                         -> 200  {"message": "Task deletada com sucesso"}
+GET    /tasks/search?priority=abc                -> 400  {"error": "Prioridade inválida"}     (antes: 500)
+```
+
+> Screenshots não foram incluídos: as três aplicações são APIs JSON, e os logs acima mostram o mesmo comportamento. Se quiser, o autor pode acrescentar prints de um cliente HTTP (por exemplo, usando o `api.http` do projeto 2) nesta seção.
 
 ### Observações sobre o comportamento da skill nas stacks
 
