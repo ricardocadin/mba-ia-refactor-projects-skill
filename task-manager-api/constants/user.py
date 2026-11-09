@@ -1,0 +1,11 @@
+ROLE_USER = 'user'
+ROLE_ADMIN = 'admin'
+ROLE_MANAGER = 'manager'
+
+USER_ROLES = (ROLE_USER, ROLE_ADMIN, ROLE_MANAGER)
+DEFAULT_ROLE = ROLE_USER
+
+MIN_PASSWORD_LENGTH = 4
+EMAIL_PATTERN = r'^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$'
+
+PASSWORD_HASH_PREFIXES = ('scrypt:', 'pbkdf2:')
