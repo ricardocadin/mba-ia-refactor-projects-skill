@@ -269,6 +269,8 @@ Distribuição: 4 CRITICAL, 4 HIGH, 4 MEDIUM, 2 LOW (14 anti-patterns).
 
 **Como confirmar:** consulte as notas de versão ou a documentação oficial da versão em uso (indicada nos arquivos de dependência). A API consta como deprecated ou removida nessa versão e existe um substituto documentado? Se sim, confirmado. A versão considerada é somente a declarada nos arquivos de dependência, de runtime, de build ou de CI do projeto; nunca infira a versão a partir do framework ou do conhecimento prévio. Se a versão não estiver declarada, ou estiver sem versão fixa, ou se a depreciação não for verificável, registre como "não confirmado" em vez de assumir. Uma API que apenas parece antiga, mas não está marcada como deprecated, não conta.
 
+**Dependência transitiva deprecated:** antes de recomendar "atualizar a dependência", verifique se existe versão que resolve (por exemplo `npm view <pacote> dist-tags` e as dependências da versão mais nova, ou o lock). Se a versão mais nova do pacote direto ainda exige a dependência deprecated, atualizar não resolve: declare isso na recomendação e apresente as opções (substituir o pacote direto por outro, aceitar o risco registrado, ou aguardar correção do mantenedor), indicando se a dependência atua só na instalação ou também na execução. Quem decide é o usuário.
+
 **Ajuste de severidade**
 
 | Situação | Severidade |
